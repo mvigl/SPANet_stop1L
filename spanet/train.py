@@ -7,6 +7,8 @@ import json
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning.profilers import PyTorchProfiler
+import comet_ml
+from pytorch_lightning.loggers import CometLogger
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks.progress.rich_progress import _RICH_AVAILABLE
 from pytorch_lightning.loggers.wandb import _WANDB_AVAILABLE, WandbLogger
@@ -159,6 +161,13 @@ def main(
         profiler = PyTorchProfiler(emit_nvtx=True)
 
     # Create the final pytorch-lightning manager
+    comet_logger = CometLogger(
+        api_key='r1SBLyPzovxoWBPDLx3TAE02O',
+        workspace='mvigl',  # Optional
+        project_name="SPANet",  # Optional
+        experiment_name="Ete_all_2top_norm_checkpoint",  # Optional
+    )
+
     trainer = pl.Trainer(
         accelerator="gpu" if options.num_gpu > 0 else "auto",
         devices=options.num_gpu if options.num_gpu > 0 else "auto",
@@ -169,9 +178,10 @@ def main(
         max_epochs=epochs,
         max_time=time_limit,
 
-        logger=logger,
+        logger=[logger, comet_logger],
         profiler=profiler,
-        callbacks=callbacks
+        callbacks=callbacks,
+        log_every_n_steps=500
     )
 
     # Save the current hyperparameters to a json file in the checkpoint directory
@@ -184,7 +194,11 @@ def main(
 
         shutil.copy2(options.event_info_file, f"{trainer.logger.log_dir}/event.yaml")
 
+    torch.set_float32_matmul_precision('high')
+
+    print('start training')
     trainer.fit(model, ckpt_path=checkpoint)
+
     # -------------------------------------------------------------------------------------------------------
 
 

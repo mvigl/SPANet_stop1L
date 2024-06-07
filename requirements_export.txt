@@ -1,0 +1,7 @@
+torch==2.2.2
+onnx
+numpy==1.24
+numba
+opt_einsum
+h5py
+pytorch-lightning==2.0.7

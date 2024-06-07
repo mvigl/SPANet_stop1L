@@ -10,7 +10,8 @@ from numpy.typing import ArrayLike
 from spanet.dataset.evaluator import SymmetricEvaluator, EventInfo
 from spanet.evaluation import evaluate_on_test_dataset, load_model
 from spanet.dataset.types import Evaluation
-
+import h5py
+import os
 
 def formatter(value: Any) -> str:
     """ A monolithic formatter function to convert possible values to output strings.
@@ -234,9 +235,13 @@ def main(
     model = load_model(log_directory, test_file, event_file, batch_size, gpu, fp16=fp16)
     evaluation = evaluate_on_test_dataset(model, fp16=fp16)
 
+
+    print(evaluation)
     # Flatten predictions
     predictions = list(evaluation.assignments.values())
-
+    assignment_probabilities = list(evaluation.assignment_probabilities.values())
+    detection_probabilities = list(evaluation.detection_probabilities.values())
+    classifications = list(evaluation.classifications.values())
     # Flatten targets and convert to numpy
     targets = [assignment[0].cpu().numpy() for assignment in model.testing_dataset.assignments.values()]
     masks = [assignment[1].cpu().numpy() for assignment in model.testing_dataset.assignments.values()]
@@ -247,6 +252,25 @@ def main(
     else:
         display_table(results, jet_limits, clusters)
 
+    dir_out = 'evals_output'
+    print(classifications)
+    if (not os.path.exists(dir_out)): os.system(f'mkdir {dir_out}')
+    with h5py.File(f'{dir_out}/evals_Ete_all_8_cat_final_noleptop.h5', 'w') as out_file: 
+        #out_file.create_dataset('predictions_lt', data=predictions[0])
+        #out_file.create_dataset('predictions_ht', data=predictions[1])
+        out_file.create_dataset('predictions_ht', data=predictions)
+        #out_file.create_dataset('targets_lt', data=targets[0])
+        #out_file.create_dataset('targets_ht', data=targets[1])
+        out_file.create_dataset('targets_ht', data=targets)
+        #out_file.create_dataset('assignment_probabilities_ht', data=assignment_probabilities[1])
+        #out_file.create_dataset('detection_probabilities_ht', data=detection_probabilities[1])
+        out_file.create_dataset('assignment_probabilities_ht', data=assignment_probabilities)
+        out_file.create_dataset('detection_probabilities_ht', data=detection_probabilities)
+        #out_file.create_dataset('assignment_probabilities_lt', data=assignment_probabilities[0])
+        #out_file.create_dataset('detection_probabilities_lt', data=detection_probabilities[0])
+        out_file.create_dataset('signal', data=classifications[0])
+        out_file.create_dataset('match', data=classifications[1])
+        out_file.create_dataset('masks', data=masks)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -278,5 +302,3 @@ if __name__ == '__main__':
 
     arguments = parser.parse_args()
     main(**arguments.__dict__)
-
-

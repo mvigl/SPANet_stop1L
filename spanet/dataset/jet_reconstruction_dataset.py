@@ -398,9 +398,16 @@ class JetReconstructionDataset(Dataset):
             vector_class_weights = vector_class_weights.shape[0] * vector_class_weights / vector_class_weights.sum()
 
             return vector_class_weights
+        
+        def compute_effective_counts_inverse(targets):
+            vector_class_weights = 1/torch.bincount(targets)
+            vector_class_weights[torch.isinf(vector_class_weights)] = 0
+            vector_class_weights = vector_class_weights.shape[0] * vector_class_weights / vector_class_weights.sum()
 
+            return vector_class_weights
+        
         return OrderedDict((
-            (key, compute_effective_counts(value))
+            (key, compute_effective_counts_inverse(value))
             for key, value in self.classifications.items()
             if value is not None
         ))
