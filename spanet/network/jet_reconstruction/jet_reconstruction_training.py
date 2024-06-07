@@ -177,7 +177,8 @@ class JetReconstructionTraining(JetReconstructionNetwork):
             self,
             total_loss: List[Tensor],
             predictions: Dict[str, Tensor],
-            targets: Dict[str, Tensor]
+            targets: Dict[str, Tensor],
+            weights: Dict[str, Tensor]
     ) -> List[Tensor]:
         classification_terms = []
 
@@ -190,17 +191,57 @@ class JetReconstructionTraining(JetReconstructionNetwork):
                 current_prediction,
                 current_target,
                 ignore_index=-1,
-                weight=weight
+                reduction='none'
             )
+            # Apply the weights
+            class_weights = torch.ones(len(current_target))
+            for i,w in enumerate(weight):
+                class_weights[current_target==i]*=w
+            event_weights = weights['EVENT/event_weights']
+            #for i,w in enumerate(weight):
+            #    event_weights[current_target==i]*=w
 
-            classification_terms.append(self.options.classification_loss_scale * current_loss)
+            weighted_losses = current_loss * event_weights * class_weights
+            # Compute the weighted average loss
+            weighted_average_loss = weighted_losses.sum() / (event_weights * class_weights).sum()
+
+            classification_terms.append(self.options.classification_loss_scale * weighted_average_loss)
 
             with torch.no_grad():
-                self.log(f"loss/classification/{key}", current_loss, sync_dist=True)
+                self.log(f"loss/classification/{key}", weighted_average_loss, sync_dist=True)
 
         return total_loss + classification_terms
 
     def training_step(self, batch: Batch, batch_nb: int) -> Dict[str, Tensor]:
+        # ===================================================================================================
+        # Parametrize based on mass
+        # ---------------------------------------------------------------------------------------------------
+        def parametrise(batch):
+            # Flatten the tensor to 2D for easier manipulation
+            tensor_data_2d = batch.sources[1][0][:,:,-2:].squeeze(1)
+            unique_rows, counts = torch.unique(tensor_data_2d, dim=0, return_counts=True)
+            non_default_mask = unique_rows != torch.tensor([-1., -1.])
+            non_default_rows = unique_rows[non_default_mask.any(dim=1)]
+            non_default_counts = counts[non_default_mask.any(dim=1)]
+
+            replacements = []
+            for row, count in zip(non_default_rows, non_default_counts):
+                replacements.extend([row] * count.item())
+
+            while len(replacements) < len(tensor_data_2d):
+                replacements.extend(replacements)
+
+            replacements = replacements[:len(tensor_data_2d)]
+            default_mask = (tensor_data_2d == torch.tensor([-1., -1.])).all(dim=1)
+            default_indices = torch.nonzero(default_mask).flatten()
+            np.random.shuffle(replacements)
+            for idx in default_indices:
+                tensor_data_2d[idx] = replacements.pop()
+            batch.sources[1][0][:,:,-2:] = tensor_data_2d.unsqueeze(1)
+            return batch
+        
+        batch = parametrise(batch)
+        
         # ===================================================================================================
         # Network Forward Pass
         # ---------------------------------------------------------------------------------------------------
@@ -278,7 +319,7 @@ class JetReconstructionTraining(JetReconstructionNetwork):
             total_loss = self.add_regression_loss(total_loss, outputs.regressions, batch.regression_targets)
 
         if self.options.classification_loss_scale > 0:
-            total_loss = self.add_classification_loss(total_loss, outputs.classifications, batch.classification_targets)
+            total_loss = self.add_classification_loss(total_loss, outputs.classifications, batch.classification_targets, batch.event_weights)
 
         # ===================================================================================================
         # Combine and return the loss

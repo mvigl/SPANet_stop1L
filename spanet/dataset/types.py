@@ -82,6 +82,9 @@ def feynman_fill(
     if SpecialKey.Event not in tree:
         tree[SpecialKey.Event] = constructor()
 
+    if SpecialKey.Weights not in tree:
+        tree[SpecialKey.Weights] = constructor()    
+
     for particle in event_particles:
         if particle not in tree:
             tree[particle] = {}
@@ -113,6 +116,7 @@ class FeatureInfo(NamedTuple):
 
 
 ClassificationInfo = str
+WeightsInfo = str
 
 
 class SpecialKey(str, Enum):
@@ -125,6 +129,7 @@ class SpecialKey(str, Enum):
     Permutations = "PERMUTATIONS"
     Classifications = "CLASSIFICATIONS"
     Embeddings = "EMBEDDINGS"
+    Weights = "WEIGHTS"
 
 
 class Source(NamedTuple):
@@ -154,6 +159,7 @@ class Batch(NamedTuple):
     assignment_targets: Tuple[AssignmentTargets, ...]
     regression_targets: Dict[str, Tensor]
     classification_targets: Dict[str, Tensor]
+    event_weights: Dict[str, Tensor]
 
 
 class Outputs(NamedTuple):

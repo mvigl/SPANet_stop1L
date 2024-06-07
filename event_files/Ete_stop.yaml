@@ -32,6 +32,9 @@ INPUTS:
       nbjet: none
       nljet: none
       nVx: none
+      #pNN
+      M1: none
+      M2: none
 
 # ----------------------------------------------------------------------
 # REQUIRED - EVENT - Complete list of resonance particles and daughters.
@@ -73,3 +76,9 @@ CLASSIFICATIONS:
   EVENT:
     - signal
     - match 
+# ------------------------------------------------------------------------------
+# event weights
+# ------------------------------------------------------------------------------    
+WEIGHTS:
+  EVENT:
+    - event_weights    
