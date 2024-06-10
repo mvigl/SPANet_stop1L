@@ -194,7 +194,8 @@ class JetReconstructionTraining(JetReconstructionNetwork):
                 reduction='none'
             )
             # Apply the weights
-            class_weights = torch.ones(len(current_target))
+            device = current_target.device
+            class_weights = torch.ones(len(current_target),device=device)
             for i,w in enumerate(weight):
                 class_weights[current_target==i]*=w
             event_weights = weights['EVENT/event_weights']
@@ -220,7 +221,7 @@ class JetReconstructionTraining(JetReconstructionNetwork):
             # Flatten the tensor to 2D for easier manipulation
             tensor_data_2d = batch.sources[1][0][:,:,-2:].squeeze(1)
             unique_rows, counts = torch.unique(tensor_data_2d, dim=0, return_counts=True)
-            non_default_mask = unique_rows != torch.tensor([-1., -1.])
+            non_default_mask = unique_rows != (torch.tensor([-1., -1.]).to(unique_rows.device))
             non_default_rows = unique_rows[non_default_mask.any(dim=1)]
             non_default_counts = counts[non_default_mask.any(dim=1)]
 
@@ -232,7 +233,7 @@ class JetReconstructionTraining(JetReconstructionNetwork):
                 replacements.extend(replacements)
 
             replacements = replacements[:len(tensor_data_2d)]
-            default_mask = (tensor_data_2d == torch.tensor([-1., -1.])).all(dim=1)
+            default_mask = (tensor_data_2d == (torch.tensor([-1., -1.]).to(unique_rows.device))).all(dim=1)
             default_indices = torch.nonzero(default_mask).flatten()
             np.random.shuffle(replacements)
             for idx in default_indices:

@@ -165,7 +165,7 @@ def main(
         api_key='r1SBLyPzovxoWBPDLx3TAE02O',
         workspace='mvigl',  # Optional
         project_name="SPANet",  # Optional
-        experiment_name="Ete_all_2top_norm_checkpoint",  # Optional
+        experiment_name="Ete_all_2top_norm_parametrised",  # Optional
     )
 
     trainer = pl.Trainer(
