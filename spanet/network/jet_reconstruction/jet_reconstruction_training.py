@@ -187,29 +187,41 @@ class JetReconstructionTraining(JetReconstructionNetwork):
             current_target = targets[key]
 
             weight = None if not self.balance_classifications else self.classification_weights[key]
-            current_loss = F.cross_entropy(
-                current_prediction,
-                current_target,
-                ignore_index=-1,
-                reduction='none'
-            )
-            # Apply the weights
-            device = current_target.device
-            class_weights = torch.ones(len(current_target),device=device)
-            for i,w in enumerate(weight):
-                class_weights[current_target==i]*=w
-            event_weights = weights['EVENT/event_weights']
-            #for i,w in enumerate(weight):
-            #    event_weights[current_target==i]*=w
+            use_event_weights = True
+            if use_event_weights:
+                current_loss = F.cross_entropy(
+                    current_prediction,
+                    current_target,
+                    ignore_index=-1,
+                    reduction='none'
+                )
+                # Apply the weights
+                device = current_target.device
+                #class_weights = torch.ones(len(current_target),device=device)
+                #for i,w in enumerate(weight):
+                #    class_weights[current_target==i]*=w
+                event_weights = weights['EVENT/event_weights']
 
-            weighted_losses = current_loss * event_weights * class_weights
-            # Compute the weighted average loss
-            weighted_average_loss = weighted_losses.sum() / (event_weights * class_weights).sum()
+                weighted_losses = current_loss * event_weights #* class_weights
+                # Compute the weighted average loss
+                weighted_average_loss = weighted_losses.sum() / (event_weights).sum()
 
-            classification_terms.append(self.options.classification_loss_scale * weighted_average_loss)
+                classification_terms.append(self.options.classification_loss_scale * weighted_average_loss)
 
-            with torch.no_grad():
-                self.log(f"loss/classification/{key}", weighted_average_loss, sync_dist=True)
+                with torch.no_grad():
+                    self.log(f"loss/classification/{key}", weighted_average_loss, sync_dist=True)
+            else:
+                current_loss = F.cross_entropy(
+                    current_prediction,
+                    current_target,
+                    ignore_index=-1,
+                    weight=weight
+                )
+    
+                classification_terms.append(self.options.classification_loss_scale * current_loss)
+    
+                with torch.no_grad():
+                    self.log(f"loss/classification/{key}", current_loss, sync_dist=True)
 
         return total_loss + classification_terms
 
@@ -218,7 +230,6 @@ class JetReconstructionTraining(JetReconstructionNetwork):
         # Parametrize based on mass
         # ---------------------------------------------------------------------------------------------------
         def parametrise(batch):
-            # Flatten the tensor to 2D for easier manipulation
             tensor_data_2d = batch.sources[1][0][:,:,-2:].squeeze(1)
             unique_rows, counts = torch.unique(tensor_data_2d, dim=0, return_counts=True)
             non_default_mask = unique_rows != (torch.tensor([-1., -1.]).to(unique_rows.device))
@@ -229,6 +240,27 @@ class JetReconstructionTraining(JetReconstructionNetwork):
             for row, count in zip(non_default_rows, non_default_counts):
                 replacements.extend([row] * count.item())
 
+            if len(replacements) == 0: 
+                #masses = [
+                #    [500,1],[500,100],[500,200],[500,300],
+                #    [600,1],[600,100],[600,200],[600,300],[600,400],[650,450],
+                #    [700,1],[700,100],[700,200],[700,300],[700,400],[700,500],[750,550],
+                #    [800,1],[800,100],[800,200],[800,300],[800,400],[800,500],[800,600],[850,650],
+                #    [900,1],[900,100],[900,200],[900,300],[900,400],[900,500],[900,600],[900,700],
+                #    [1000,1],[1000,100],[1000,200],[1000,300],[1000,400],[1000,500],[1000,600],[1000,700],[1000,800],
+                #    [1100,1],[1100,100],[1100,200],[1100,300],[1100,400],[1100,500],[1100,600],[1100,700],[1100,800],
+                #    [1200,1],[1200,100],[1200,200],[1200,300],[1200,400],[1200,500],[1200,600],[1200,700],[1200,800],
+                #    [1300,1],[1300,100],[1300,200],[1300,300],[1300,400],[1300,500],[1300,600],[1300,700],[1300,800],
+                #    [1400,1],[1400,100],[1400,200],[1400,300],[1400,400],[1400,500],[1400,600],[1400,700],[1400,800],
+                #    [1500,1],[1500,100],[1500,200],[1500,300],[1500,400],[1500,500],[1500,600],[1500,700],[1500,800],
+                #    [1600,1],[1600,100],[1600,200],[1600,300],[1600,400],[1600,500],[1600,600],[1600,700],[1600,800]
+                #    ]
+                masses = [
+                    [0,0],[0,1],[0,1],[1,1]
+                    ]
+                for mass in masses:
+                    replacements.extend(torch.tensor(mass))
+                    
             while len(replacements) < len(tensor_data_2d):
                 replacements.extend(replacements)
 

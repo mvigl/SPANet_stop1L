@@ -1,0 +1,79 @@
+INPUTS:
+  SEQUENTIAL:
+    Momenta:
+      mass: log_normalize
+      pt: log_normalize
+      eta: normalize
+      phi: normalize
+      btag: none
+      qtag: none      
+      etag: none
+      bscore: none
+      Larget: none
+      LargeZ: none
+      LargeW: none
+
+  # ---------------------------------------------------------------------
+  # REQUIRED - GLOBAL - inputs which will have a single vector per event.
+  # ---------------------------------------------------------------------
+  GLOBAL:
+    Met:
+      MET: log_normalize
+      METsig: log_normalize
+      METphi: normalize
+      mT_METl: log_normalize
+      dR_bb: normalize
+      dphi_METl: normalize
+      MT2_bb: log_normalize
+      MT2_b1l1_b2: log_normalize
+      MT2_b2l1_b1: log_normalize
+      MT2_min: log_normalize
+      HT: log_normalize
+      nbjet: none
+      nljet: none
+      nlargejet: none
+      nVx: none
+      lepflav1: none
+      #pNN
+      #M1: none
+      #M2: none
+      p1: none
+      p2: none
+
+# ----------------------------------------------------------------------
+# REQUIRED - EVENT - Complete list of resonance particles and daughters.
+# ----------------------------------------------------------------------
+EVENT:
+  lt:
+    - b
+
+  ht:
+    - b
+    - q1
+    - q2
+
+# ---------------------------------------------------------
+# REQUIRED KEY - PERMUTATIONS - List of valid permutations.
+# ---------------------------------------------------------
+PERMUTATIONS:
+    ht:
+      - [ q1, q2 ]
+
+# ------------------------------------------------------------------------------
+# REQUIRED - REGRESSIONS - List of desired features to regress from observables.
+# ------------------------------------------------------------------------------
+REGRESSIONS:
+
+# ------------------------------------------------------------------------------
+# REQUIRED - CLASSIFICATIONS - List of desired features to regress from observables.
+# ------------------------------------------------------------------------------
+CLASSIFICATIONS:
+  EVENT:
+    - class
+    - match 
+# ------------------------------------------------------------------------------
+# event weights
+# ------------------------------------------------------------------------------    
+WEIGHTS:
+  EVENT:
+    - event_weights    

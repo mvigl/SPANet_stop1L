@@ -5,3 +5,5 @@ numba
 opt_einsum
 h5py
 pytorch-lightning==2.0.7
+rich
+scikit-learn
